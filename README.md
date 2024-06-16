@@ -3,8 +3,8 @@
 
 [Nebulex]: https://github.com/cabol/nebulex
 
-![CI](https://github.com/elixir-nebulex/nebulex_distributed/workflows/CI/badge.svg)
-[![Coverage Status](https://coveralls.io/repos/github/elixir-nebulex/nebulex_distributed/badge.svg?branch=main)](https://coveralls.io/github/elixir-nebulex/nebulex_distributed?branch=main)
+![CI](https://github.com/nebulex-project/nebulex_distributed/workflows/CI/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/nebulex-project/nebulex_distributed/badge.svg?branch=main)](https://coveralls.io/github/nebulex-project/nebulex_distributed?branch=main)
 [![Hex Version](https://img.shields.io/hexpm/v/nebulex_distributed.svg)](https://hex.pm/packages/nebulex_distributed)
 [![Docs](https://img.shields.io/badge/docs-hexpm-blue.svg)](https://hexdocs.pm/nebulex_distributed)
 
@@ -128,9 +128,9 @@ Where `BENCH_TEST_FILE` can be any of:
 
 Contributions to Nebulex are very welcome and appreciated!
 
-Use the [issue tracker](https://github.com/elixir-nebulex/nebulex_distributed/issues)
+Use the [issue tracker](https://github.com/nebulex-project/nebulex_distributed/issues)
 for bug reports or feature requests. Open a
-[pull request](https://github.com/elixir-nebulex/nebulex_distributed/pulls)
+[pull request](https://github.com/nebulex-project/nebulex_distributed/pulls)
 when you are ready to contribute.
 
 When submitting a pull request you should not update the

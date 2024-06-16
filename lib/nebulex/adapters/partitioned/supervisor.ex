@@ -21,7 +21,7 @@ defmodule Nebulex.Adapters.Partitioned.Supervisor do
   @impl true
   def init({cache, adapter_meta, primary_opts, opts}) do
     children = [
-      {cache.__primary__, primary_opts},
+      {cache.__primary__(), primary_opts},
       {Bootstraper, {Map.put(adapter_meta, :cache, cache), opts}}
     ]
 

@@ -17,13 +17,6 @@ defmodule Nebulex.Adapters.Partitioned.Options do
 
   # Start options
   start_opts = [
-    cache: [
-      type: :atom,
-      required: true,
-      doc: """
-      The defined cache module.
-      """
-    ],
     primary: [
       type: :keyword_list,
       required: false,

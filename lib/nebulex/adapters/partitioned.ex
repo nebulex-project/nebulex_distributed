@@ -57,18 +57,15 @@ defmodule Nebulex.Adapters.Partitioned do
 
   ## Additional implementation notes
 
-  `:pg2` or `:pg` (>= OTP 23) is used under-the-hood by the adapter to manage
-  the cluster nodes. When the partitioned cache is started in a node, it creates
-  a group and joins it (the cache supervisor PID is joined to the group). Then,
-  when a function is invoked, the adapter picks a node from the group members,
-  and then the function is executed on that specific node. In the same way,
-  when a partitioned cache supervisor dies (the cache is stopped or killed for
-  some reason), the PID of that process is automatically removed from the PG
-  group; this is why it's recommended to use consistent hashing for distributing
-  the keys across the cluster nodes.
-
-  > **NOTE:** `pg2` will be replaced by `pg` in future, since the `pg2` module
-    is deprecated as of OTP 23 and scheduled for removal in OTP 24.
+  `:pg` is used under-the-hood by the adapter to manage the cluster nodes.
+  When the partitioned cache is started in a node, it creates a group and joins
+  it (the cache supervisor PID is joined to the group). Then, when a function
+  is invoked, the adapter picks a node from the group members, and then the
+  function is executed on that specific node. In the same way, when a
+  partitioned cache supervisor dies (the cache is stopped or killed for some
+  reason), the PID of that process is automatically removed from the PG group;
+  this is why it's recommended to use consistent hashing for distributing the
+  keys across the cluster nodes.
 
   This adapter depends on a local cache adapter (primary storage), it adds
   a thin layer on top of it in order to distribute requests across a group
@@ -76,13 +73,20 @@ defmodule Nebulex.Adapters.Partitioned do
   you don't need to define any additional cache module for the primary
   storage, instead, the adapter initializes it automatically (it adds the
   primary storage as part of the supervision tree) based on the given
-  options within the `primary_storage_adapter:` argument.
+  `:primary_storage_adapter` option.
 
   ## Usage
 
-  When used, the Cache expects the `:otp_app` and `:adapter` as options.
-  The `:otp_app` should point to an OTP application that has the cache
-  configuration. For example:
+  The cache expects the `:otp_app` and `:adapter` as options when used.
+  The `:otp_app` should point to an OTP application with the cache
+  configuration. Optionally, you can configure the desired primary
+  storage adapter with the option `:primary_storage_adapter`
+  (defaults to `Nebulex.Adapters.Local`). See the compile time options
+  for more information:
+
+  #{Nebulex.Adapters.Partitioned.Options.compile_options_docs()}
+
+  For example:
 
       defmodule MyApp.PartitionedCache do
         use Nebulex.Cache,
@@ -90,8 +94,7 @@ defmodule Nebulex.Adapters.Partitioned do
           adapter: Nebulex.Adapters.Partitioned
       end
 
-  Optionally, you can configure the desired primary storage adapter with the
-  option `:primary_storage_adapter`; defaults to `Nebulex.Adapters.Local`.
+  Providing the `:primary_storage_adapter`:
 
       defmodule MyApp.PartitionedCache do
         use Nebulex.Cache,
@@ -142,21 +145,11 @@ defmodule Nebulex.Adapters.Partitioned do
 
   See `Nebulex.Cache` for more information.
 
-  ## Options
+  ## Configuration options
 
-  This adapter supports the following options and all of them can be given via
-  the cache configuration:
+  This adapter supports the following configuration options:
 
-    * `:primary` - The options that will be passed to the adapter associated
-      with the local primary storage. These options will depend on the local
-      adapter to use.
-
-    * `:keyslot` - Defines the module implementing `Nebulex.Adapter.Keyslot`
-      behaviour.
-
-    * `:join_timeout` - Interval time in milliseconds for joining the
-      running partitioned cache to the cluster. This is to ensure it is
-      always joined. Defaults to `:timer.seconds(180)`.
+  #{Nebulex.Adapters.Partitioned.Options.start_options_docs()}
 
   ## Shared runtime options
 
@@ -173,25 +166,19 @@ defmodule Nebulex.Adapters.Partitioned do
 
   ## Telemetry events
 
-  This adapter emits all recommended Telemetry events, and documented
-  in `Nebulex.Cache` module (see **"Adapter-specific events"** section).
-
   Since the partitioned adapter depends on the configured primary storage
-  adapter (local cache adapter), this one may also emit Telemetry events.
+  adapter (local cache adapter), this one will also emit Telemetry events.
   Therefore, there will be events emitted by the partitioned adapter as well
-  as the primary storage adapter. For example, for the cache defined before
-  `MyApp.PartitionedCache`, these would be the emitted events:
+  as the primary storage adapter. For example, the cache defined before
+  `MyApp.PartitionedCache` will emit the following events:
 
-    * `[:my_app, :partitioned_cache, :command, :start]`
-    * `[:my_app, :partitioned_cache, :primary, :command, :start]`
-    * `[:my_app, :partitioned_cache, :command, :stop]`
-    * `[:my_app, :partitioned_cache, :primary, :command, :stop]`
-    * `[:my_app, :partitioned_cache, :command, :exception]`
-    * `[:my_app, :partitioned_cache, :primary, :command, :exception]`
+    * `[:nebulex, :cache, :command, :start]`
+    * `[:nebulex, :cache, :command, :stop]`
+    * `[:nebulex, :cache, :command, :exception]`
 
-  As you may notice, the telemetry prefix by default for the partitioned cache
-  is `[:my_app, :partitioned_cache]`, and the prefix for its primary storage
-  `[:my_app, :partitioned_cache, :primary]`.
+  As you may notice, the telemetry prefix by default for the cache is
+  `[:nebulex, :cache]`. You can get the details about the cache in the metadata;
+  whether it is the partitioned one or its primary storage.
 
   See also the [Telemetry guide](http://hexdocs.pm/nebulex/telemetry.html)
   for more information and examples.
@@ -374,13 +361,15 @@ defmodule Nebulex.Adapters.Partitioned do
 
   @impl true
   def init(opts) do
+    # Common options
+    {telemetry_prefix, opts} = Keyword.pop!(opts, :telemetry_prefix)
+    {telemetry, opts} = Keyword.pop!(opts, :telemetry)
+    {cache, opts} = Keyword.pop!(opts, :cache)
+
     # Validate options
     opts = Options.validate_start_opts!(opts)
 
-    # Required options
-    telemetry_prefix = Keyword.fetch!(opts, :telemetry_prefix)
-    telemetry = Keyword.fetch!(opts, :telemetry)
-    cache = Keyword.fetch!(opts, :cache)
+    # Get the cache name (required)
     name = opts[:name] || cache
 
     # Maybe use stats
@@ -619,10 +608,6 @@ defmodule Nebulex.Adapters.Partitioned do
     do_stream(adapter_meta, query_meta, opts)
   end
 
-  defp do_stream(_adapter_meta, %{query: {:in, []}}, _opts) do
-    {:ok, Stream.map([], & &1)}
-  end
-
   defp do_stream(adapter_meta, %{query: {:in, keys}} = query, opts) do
     timeout = Keyword.fetch!(opts, :timeout)
     {on_error, opts} = Keyword.pop!(opts, :on_error)
@@ -820,12 +805,12 @@ defmodule Nebulex.Adapters.Partitioned do
   def with_dynamic_cache(adapter_meta, action, args)
 
   def with_dynamic_cache(%{cache: cache, primary_name: nil}, action, args) do
-    apply(cache.__primary__, action, args)
+    apply(cache.__primary__(), action, args)
   end
 
   def with_dynamic_cache(%{cache: cache, primary_name: primary_name}, action, args) do
-    cache.__primary__.with_dynamic_cache(primary_name, fn ->
-      apply(cache.__primary__, action, args)
+    cache.__primary__().with_dynamic_cache(primary_name, fn ->
+      apply(cache.__primary__(), action, args)
     end)
   end
 

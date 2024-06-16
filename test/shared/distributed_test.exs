@@ -47,6 +47,10 @@ defmodule Nebulex.DistributedTest do
                |> Enum.to_list() == []
       end
 
+      test "stream/2 returns empty when is evaluated", %{nil_cache: cache} do
+        assert cache.stream!(in: []) |> Enum.to_list() == []
+      end
+
       test "delete_all/2 raises an exception because of an invalid query", %{cache: cache} do
         assert_raise RuntimeError, ~r|\*\* \(Nebulex.QueryError\) invalid query|, fn ->
           cache.delete_all(query: :invalid)
