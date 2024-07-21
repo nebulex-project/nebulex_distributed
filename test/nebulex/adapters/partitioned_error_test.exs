@@ -1,10 +1,7 @@
 defmodule Nebulex.Adapters.PartitionedErrorTest do
   use ExUnit.Case, async: true
-  use Mimic
 
-  # Inherit tests
-  use Nebulex.Cache.KVErrorTest
-  use Nebulex.Cache.KVExpirationErrorTest
+  use Nebulex.CacheTestCase, only: [Nebulex.Cache.KVErrorTest, Nebulex.Cache.KVExpirationErrorTest]
   use Nebulex.DistributedQueryableErrorTest
 
   import Nebulex.CacheCase, only: [setup_with_dynamic_cache: 2]
@@ -17,4 +14,12 @@ defmodule Nebulex.Adapters.PartitionedErrorTest do
   end
 
   setup_with_dynamic_cache ErrorCache, __MODULE__
+
+  describe "info/1" do
+    test "error: command returns an error" do
+      assert_raise Nebulex.Error,
+                   ~r"command failed with reason: :error",
+                   fn -> ErrorCache.info!() end
+    end
+  end
 end

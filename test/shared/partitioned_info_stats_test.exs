@@ -48,7 +48,7 @@ defmodule Nebulex.Adapters.PartitionedInfoStatsTest do
 
         refute cache.get!(:a)
 
-        wait_until(fn ->
+        wait_until fn ->
           assert cache.info!(:stats) == %{
                    hits: 0,
                    misses: 1,
@@ -58,7 +58,7 @@ defmodule Nebulex.Adapters.PartitionedInfoStatsTest do
                    deletions: 1,
                    updates: 4
                  }
-        end)
+        end
       end
 
       test "deletions", %{cache: cache} do
@@ -110,7 +110,7 @@ defmodule Nebulex.Adapters.PartitionedInfoStatsTest do
         refute cache.get!(:c)
         refute cache.get!(:d)
 
-        wait_until(fn ->
+        wait_until fn ->
           assert cache.info!(:stats) == %{
                    hits: 6,
                    misses: 4,
@@ -120,7 +120,7 @@ defmodule Nebulex.Adapters.PartitionedInfoStatsTest do
                    deletions: 2,
                    updates: 0
                  }
-        end)
+        end
       end
     end
   end

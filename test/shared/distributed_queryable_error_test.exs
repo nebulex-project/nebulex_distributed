@@ -2,8 +2,6 @@ defmodule Nebulex.DistributedQueryableErrorTest do
   import Nebulex.CacheCase
 
   deftests do
-    import Nebulex.CacheCase, only: [assert_error_module: 2, assert_error_reason: 2]
-
     describe "get_all/2" do
       test "error: command failed", %{cache: cache} do
         assert {:error,
@@ -25,7 +23,7 @@ defmodule Nebulex.DistributedQueryableErrorTest do
                   %Nebulex.Error{
                     module: Nebulex.Error,
                     reason: :error,
-                    opts: []
+                    metadata: []
                   }}
       end
     end
@@ -51,7 +49,7 @@ defmodule Nebulex.DistributedQueryableErrorTest do
                   %Nebulex.Error{
                     module: Nebulex.Error,
                     reason: :error,
-                    opts: []
+                    metadata: []
                   }}
       end
     end
@@ -77,7 +75,7 @@ defmodule Nebulex.DistributedQueryableErrorTest do
                   %Nebulex.Error{
                     module: Nebulex.Error,
                     reason: :error,
-                    opts: []
+                    metadata: []
                   }}
       end
     end

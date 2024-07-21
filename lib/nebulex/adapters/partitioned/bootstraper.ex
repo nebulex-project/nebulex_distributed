@@ -4,7 +4,8 @@ defmodule Nebulex.Adapters.Partitioned.Bootstraper do
 
   import Nebulex.Utils
 
-  alias Nebulex.{Cluster, Telemetry}
+  alias Nebulex.Distributed.Cluster
+  alias Nebulex.Telemetry
 
   # State
   defstruct [:adapter_meta, :join_timeout]

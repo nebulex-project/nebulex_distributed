@@ -1,4 +1,4 @@
-defmodule Nebulex.RPC do
+defmodule Nebulex.Distributed.RPC do
   @moduledoc """
   RPC utilities.
   """
@@ -34,7 +34,7 @@ defmodule Nebulex.RPC do
 
   ## Example
 
-      iex> Nebulex.RPC.call(node(), Map, :new, [[]])
+      iex> Nebulex.Distributed.RPC.call(node(), Map, :new, [[]])
       %{}
 
   """
@@ -63,13 +63,12 @@ defmodule Nebulex.RPC do
 
   ## Example
 
-      iex> Nebulex.RPC.multicall([node()], Map, :new, [[foo: :bar]])
+      iex> alias Nebulex.Distributed.RPC
+      iex> RPC.multicall([node()], Map, :new, [[foo: :bar]])
       {[{:"primary@127.0.0.1", %{foo: :bar}}], []}
-      iex> Nebulex.RPC.multicall([node()], Map, :new, [[foo: :bar]], 1000)
+      iex> RPC.multicall([node()], Map, :new, [[foo: :bar]], 1000)
       {[{:"primary@127.0.0.1", %{foo: :bar}}], []}
-      iex> Nebulex.RPC.multicall(
-      ...>   [node()], Map, :new, [[foo: :bar]], 1000, {[], []}
-      ...> )
+      iex> RPC.multicall([node()], Map, :new, [[foo: :bar]], 1000, {[], []})
       {[{:"primary@127.0.0.1", %{foo: :bar}}], []}
 
   """
@@ -101,14 +100,12 @@ defmodule Nebulex.RPC do
   ## Example
 
       iex> node = node()
-      iex> Nebulex.RPC.multi_mfa_call(%{node => {Map, :new, [[foo: :bar]]}})
+      iex> alias Nebulex.Distributed.RPC
+      iex> RPC.multi_mfa_call(%{node => {Map, :new, [[foo: :bar]]}})
       {[{{:"primary@127.0.0.1", {Map, :new, [[foo: :bar]]}}, %{foo: :bar}}], []}
-      iex> Nebulex.RPC.multi_mfa_call(
-      ...>   %{node => {Map, :new, [[foo: :bar]]}},
-      ...>   1000
-      ...> )
+      iex> RPC.multi_mfa_call(%{node => {Map, :new, [[foo: :bar]]}}, 1000)
       {[{{:"primary@127.0.0.1", {Map, :new, [[foo: :bar]]}}, %{foo: :bar}}], []}
-      iex> Nebulex.RPC.multi_mfa_call(
+      iex> RPC.multi_mfa_call(
       ...>   %{node => {Map, :new, [[foo: :bar]]}},
       ...>   1000,
       ...>   {[], []}

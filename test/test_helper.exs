@@ -19,8 +19,10 @@ end
 
 # Mocks
 [
-  Nebulex.Cache.Registry,
-  Nebulex.Cluster
+  Nebulex.Distributed.Cluster,
+  Nebulex.Distributed.TestCache.Multilevel.L1,
+  Nebulex.Distributed.TestCache.Multilevel.L2,
+  Nebulex.Distributed.TestCache.Multilevel.L3
 ]
 |> Enum.each(&Mimic.copy/1)
 

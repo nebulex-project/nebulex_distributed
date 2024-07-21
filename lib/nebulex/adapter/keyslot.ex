@@ -35,7 +35,7 @@ defmodule Nebulex.Adapter.Keyslot do
       2
 
   """
-  @callback hash_slot(key :: any, range :: pos_integer) :: non_neg_integer
+  @callback hash_slot(key :: any(), range :: pos_integer()) :: non_neg_integer()
 
   @doc false
   defmacro __using__(_opts) do

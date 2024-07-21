@@ -46,7 +46,7 @@ defmodule NebulexDistributed.MixProject do
   def application do
     [
       extra_applications: [],
-      mod: {Nebulex.Adapters.Distributed.Application, []}
+      mod: {Nebulex.Distributed.Application, []}
     ]
   end
 
