@@ -1,10 +1,7 @@
 defmodule Nebulex.Adapters.PartitionedErrorTest do
   use ExUnit.Case, async: true
-  use Mimic
 
-  # Inherit tests
-  use Nebulex.Cache.KVErrorTest
-  use Nebulex.Cache.KVExpirationErrorTest
+  use Nebulex.CacheTestCase, only: [Nebulex.Cache.KVErrorTest, Nebulex.Cache.KVExpirationErrorTest]
   use Nebulex.DistributedQueryableErrorTest
 
   import Nebulex.CacheCase, only: [setup_with_dynamic_cache: 2]

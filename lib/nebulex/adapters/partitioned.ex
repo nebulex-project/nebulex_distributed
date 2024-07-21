@@ -405,7 +405,7 @@ defmodule Nebulex.Adapters.Partitioned do
     child_spec =
       Supervisor.child_spec(
         {Nebulex.Adapters.Partitioned.Supervisor, {cache, name, adapter_meta, primary_opts, opts}},
-        id: name
+        id: {__MODULE__, name}
       )
 
     {:ok, child_spec, adapter_meta}
@@ -511,13 +511,6 @@ defmodule Nebulex.Adapters.Partitioned do
   end
 
   @impl true
-  def update_counter(adapter_meta, key, amount, ttl, default, opts) do
-    opts = Options.validate_common_runtime_opts!(opts)
-
-    call(adapter_meta, key, :incr, [key, amount, [ttl: ttl, default: default] ++ opts], opts)
-  end
-
-  @impl true
   def ttl(adapter_meta, key, opts) do
     opts = Options.validate_common_runtime_opts!(opts)
 
@@ -536,6 +529,13 @@ defmodule Nebulex.Adapters.Partitioned do
     opts = Options.validate_common_runtime_opts!(opts)
 
     call(adapter_meta, key, :touch, [key, opts], opts)
+  end
+
+  @impl true
+  def update_counter(adapter_meta, key, amount, ttl, default, opts) do
+    opts = Options.validate_common_runtime_opts!(opts)
+
+    call(adapter_meta, key, :incr, [key, amount, [ttl: ttl, default: default] ++ opts], opts)
   end
 
   ## Nebulex.Adapter.Queryable
@@ -602,115 +602,47 @@ defmodule Nebulex.Adapters.Partitioned do
   end
 
   @impl true
-  def stream(adapter_meta, query_meta, opts) do
+  def stream(adapter_meta, query, opts) do
     opts = Options.validate_stream_opts!(opts)
 
-    do_stream(adapter_meta, query_meta, opts)
-  end
+    # The partitioned adapter is a wrapper adapter, it doesn't implement any
+    # cache storage, it depends on other cache adapters to do so. There are no
+    # entries to stream from the partitioned adapter itself. Therefore, this
+    # is a workaround to create a stream to trigger the evaluation against the
+    # configured primary storage adapter lazily.
+    stream = fn _, _ ->
+      {on_error, opts} = Keyword.pop!(opts, :on_error)
 
-  defp do_stream(adapter_meta, %{query: {:in, keys}} = query, opts) do
-    timeout = Keyword.fetch!(opts, :timeout)
-    {on_error, opts} = Keyword.pop!(opts, :on_error)
+      case do_execute(adapter_meta, %{query | op: :get_all}, opts) do
+        {:ok, results} ->
+          {:halt, [results]}
 
-    query = build_query(query)
+        {:error, _} when on_error == :nothing ->
+          {:halt, []}
 
-    reducer = fn
-      {:ok, {:ok, res}}, _, acc ->
-        {:cont, res ++ acc}
+        {:error, reason} when on_error == :raise ->
+          stacktrace =
+            Process.info(self(), :current_stacktrace)
+            |> elem(1)
+            |> tl()
 
-      {:ok, {:error, _} = error}, _, _ ->
-        {:halt, error}
-
-      {:error, _} = error, _, _ ->
-        {:halt, error}
+          reraise reason, stacktrace
+      end
     end
 
-    # TODO: Perhaps find a better way to create the stream
-    Stream.resource(
-      fn ->
-        keys
-        |> group_keys_by_node(adapter_meta, :stream)
-        |> Enum.map(fn {node, group} ->
-          {node, {__MODULE__, :eval_stream, [adapter_meta, Keyword.put(query, :in, group), opts]}}
-        end)
-      end,
-      fn
-        [] ->
-          {:halt, []}
-
-        groups ->
-          case RPC.multi_mfa_call(groups, timeout, [], reducer) do
-            {:error, _} = error when on_error == :nothing ->
-              {:halt, error}
-
-            {:error, reason} when on_error == :raise ->
-              stacktrace =
-                Process.info(self(), :current_stacktrace)
-                |> elem(1)
-                |> tl()
-
-              reraise reason, stacktrace
-
-            elements ->
-              {[elements], []}
-          end
-      end,
-      & &1
-    )
-    |> wrap_ok()
-  end
-
-  defp do_stream(adapter_meta, query, opts) do
-    timeout = Keyword.fetch!(opts, :timeout)
-    {on_error, opts} = Keyword.pop!(opts, :on_error)
-
-    query = build_query(query)
-
-    Stream.resource(
-      fn ->
-        Cluster.get_nodes(adapter_meta.name)
-      end,
-      fn
-        [] ->
-          {:halt, []}
-
-        nodes ->
-          RPC.multicall(
-            nodes,
-            __MODULE__,
-            :eval_stream,
-            [adapter_meta, query, opts],
-            timeout
-          )
-          |> handle_rpc_multi_call(:stream, reducer(:stream))
-          |> case do
-            {:ok, elements} ->
-              {[elements], []}
-
-            {:error, _} = error when on_error == :nothing ->
-              {:halt, error}
-
-            {:error, reason} when on_error == :raise ->
-              stacktrace =
-                Process.info(self(), :current_stacktrace)
-                |> elem(1)
-                |> tl()
-
-              reraise reason, stacktrace
-          end
-      end,
-      & &1
-    )
-    |> wrap_ok()
+    {:ok, stream}
   end
 
   ## Nebulex.Adapter.Transaction
 
   @impl true
   def transaction(adapter_meta, fun, opts) do
-    opts = Options.validate_common_runtime_opts!(opts)
+    opts =
+      opts
+      |> Options.validate_common_runtime_opts!()
+      |> Keyword.put(:nodes, Cluster.get_nodes(adapter_meta.name))
 
-    super(adapter_meta, fun, Keyword.put(opts, :nodes, Cluster.get_nodes(adapter_meta.name)))
+    super(adapter_meta, fun, opts)
   end
 
   @impl true
@@ -786,7 +718,7 @@ defmodule Nebulex.Adapters.Partitioned do
   def merge_info_map(map1, map2) when is_map(map1) and is_map(map2) do
     Enum.reduce(map1, map2, fn
       {k, v}, acc when is_integer(v) ->
-        Map.update(acc, k, v, &Kernel.+(&1, v))
+        Map.update(acc, k, v, &(&1 + v))
 
       {k, v}, acc when is_map(v) ->
         Map.update(acc, k, v, &merge_info_map(&1, v))
@@ -812,15 +744,6 @@ defmodule Nebulex.Adapters.Partitioned do
     cache.__primary__().with_dynamic_cache(primary_name, fn ->
       apply(cache.__primary__(), action, args)
     end)
-  end
-
-  @doc """
-  Helper to perform `stream/3` locally.
-  """
-  def eval_stream(meta, query, opts) do
-    with {:ok, stream} <- with_dynamic_cache(meta, :stream, [query, opts]) do
-      {:ok, Enum.to_list(stream)}
-    end
   end
 
   ## Private Functions
@@ -860,41 +783,24 @@ defmodule Nebulex.Adapters.Partitioned do
 
     adapter_meta
     |> get_node(key)
-    |> rpc_call(adapter_meta, action, args, timeout)
+    |> RPC.call(__MODULE__, :with_dynamic_cache, [adapter_meta, action, args], timeout)
   end
-
-  defp rpc_call(node, meta, fun, args, timeout) when is_map(meta) do
-    RPC.call(node, __MODULE__, :with_dynamic_cache, [meta, fun, args], timeout)
-  end
-
-  # defp rpc_call(node, mod, fun, args, timeout) when is_atom(mod) do
-  #   RPC.call(node, mod, fun, args, timeout)
-  # end
 
   defp map_reduce(enum, meta, action, args, timeout, acc, reducer, group_fun \\ & &1) do
     enum
-    |> group_keys_by_node(meta, action)
+    |> group_by_node(meta, action)
     |> Enum.map(fn {node, group} ->
       {node, {__MODULE__, :with_dynamic_cache, [meta, action, [group_fun.(group) | args]]}}
     end)
     |> RPC.multi_mfa_call(timeout, acc, reducer)
   end
 
-  defp group_keys_by_node(enum, adapter_meta, action) when action in [:put_all, :put_new_all] do
-    Enum.reduce(enum, %{}, fn {key, _} = entry, acc ->
-      node = get_node(adapter_meta, key)
-
-      Map.update(acc, node, [entry], &[entry | &1])
-    end)
+  defp group_by_node(enum, adapter_meta, action) when action in [:put_all, :put_new_all] do
+    Enum.group_by(enum, &get_node(adapter_meta, elem(&1, 0)))
   end
 
-  defp group_keys_by_node(enum, adapter_meta, action)
-       when action in [:get_all, :count_all, :delete_all, :stream] do
-    Enum.reduce(enum, %{}, fn key, acc ->
-      node = get_node(adapter_meta, key)
-
-      Map.update(acc, node, [key], &[key | &1])
-    end)
+  defp group_by_node(enum, adapter_meta, _action) do
+    Enum.group_by(enum, &get_node(adapter_meta, &1))
   end
 
   defp handle_rpc_multi_call({res, []}, _action, fun) do

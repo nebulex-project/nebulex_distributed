@@ -1,4 +1,4 @@
-defmodule Nebulex.Adapters.Distributed.Application do
+defmodule Nebulex.Distributed.Application do
   @moduledoc false
 
   use Application
@@ -9,7 +9,7 @@ defmodule Nebulex.Adapters.Distributed.Application do
 
     Supervisor.start_link(children,
       strategy: :one_for_one,
-      name: Nebulex.Adapters.Distributed.Supervisor
+      name: Nebulex.Distributed.Supervisor
     )
   end
 

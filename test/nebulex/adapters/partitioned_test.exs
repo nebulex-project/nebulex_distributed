@@ -2,23 +2,21 @@ defmodule Nebulex.Adapters.PartitionedCacheTest do
   use Nebulex.NodeCase
   use Mimic
 
-  use Nebulex.DistributedCommonTest
+  use Nebulex.CacheTestCase, except: [Nebulex.Cache.QueryableQueryErrorTest]
   use Nebulex.DistributedTest
+  use Nebulex.DistributedInfoTest
   use Nebulex.Adapters.PartitionedInfoStatsTest
 
   import Nebulex.CacheCase
 
   alias Nebulex.Adapter
-  alias Nebulex.Adapters.Partitioned.TestCache.{PartitionedCache, PartitionedNilCache}
+  alias Nebulex.Distributed.TestCache.{PartitionedCache, PartitionedNilCache}
   alias Nebulex.Utils
 
   @moduletag capture_log: true
 
   @primary :"primary@127.0.0.1"
   @cache_name :partitioned_cache
-
-  # Set config
-  :ok = Application.put_env(:nebulex, PartitionedCache, primary: [backend: :shards])
 
   setup do
     cluster = :lists.usort([@primary | Application.get_env(:nebulex_distributed, :nodes, [])])
@@ -49,9 +47,14 @@ defmodule Nebulex.Adapters.PartitionedCacheTest do
 
   describe "c:init/1" do
     test "initializes the primary store metadata" do
-      Adapter.with_meta(PartitionedCache.Primary, fn adapter, meta ->
-        assert adapter == Nebulex.Adapters.Local
-        assert meta.backend == :shards
+      primary_name =
+        Adapter.with_meta(@cache_name, fn %{primary_name: primary_name} ->
+          primary_name
+        end)
+
+      Adapter.with_meta(primary_name, fn adapter_meta ->
+        assert adapter_meta.adapter == Nebulex.Adapters.Local
+        assert adapter_meta.backend == :ets
       end)
     end
 
@@ -96,7 +99,7 @@ defmodule Nebulex.Adapters.PartitionedCacheTest do
 
       expected = "the adapter expects the option value #{mod} to list #{behaviour} as a behaviour"
 
-      assert Regex.match?(~r|#{expected}|, msg)
+      assert Regex.match?(~r/#{expected}/, msg)
     end
 
     test "fails because invalid keyslot option" do
@@ -203,9 +206,9 @@ defmodule Nebulex.Adapters.PartitionedCacheTest do
 
       node = teardown_cache(1)
 
-      wait_until(fn ->
+      wait_until fn ->
         assert PartitionedCache.nodes() == cluster -- [node]
-      end)
+      end
 
       refute PartitionedCache.get!(1)
 
@@ -224,7 +227,7 @@ defmodule Nebulex.Adapters.PartitionedCacheTest do
       joined = prefix ++ [:joined]
       exit_sig = prefix ++ [:exit]
 
-      with_telemetry_handler(__MODULE__, [started, stopped, joined, exit_sig], fn ->
+      with_telemetry_handler __MODULE__, [started, stopped, joined, exit_sig], fn ->
         assert node() in PartitionedCache.nodes()
 
         true =
@@ -242,13 +245,14 @@ defmodule Nebulex.Adapters.PartitionedCacheTest do
         assert_receive {^joined, %{system_time: _}, %{cluster_nodes: nodes}}, 5000
 
         assert node() in nodes
-        assert nodes -- PartitionedCache.nodes() == []
 
-        :ok = Process.sleep(2100)
+        wait_until fn ->
+          assert nodes -- PartitionedCache.nodes() == []
+        end
 
         assert_receive {^joined, %{system_time: _}, %{cluster_nodes: nodes}}, 5000
         assert node() in nodes
-      end)
+      end
     end
   end
 
