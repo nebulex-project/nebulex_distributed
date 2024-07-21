@@ -1,4 +1,4 @@
-defmodule Nebulex.Adapters.Distributed.Application do
+defmodule Nebulex.Distributed.Application do
   @moduledoc false
 
   use Application
@@ -9,13 +9,13 @@ defmodule Nebulex.Adapters.Distributed.Application do
 
     Supervisor.start_link(children,
       strategy: :one_for_one,
-      name: Nebulex.Adapters.Distributed.Supervisor
+      name: Nebulex.Distributed.Supervisor
     )
   end
 
   if Code.ensure_loaded?(:pg) do
     defp pg_children do
-      [%{id: :pg, start: {:pg, :start_link, [Nebulex.Cluster]}}]
+      [%{id: :pg, start: {:pg, :start_link, [Nebulex.Distributed.Cluster]}}]
     end
   else
     defp pg_children do

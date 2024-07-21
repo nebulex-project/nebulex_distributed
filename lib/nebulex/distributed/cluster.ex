@@ -1,4 +1,4 @@
-defmodule Nebulex.Cluster do
+defmodule Nebulex.Distributed.Cluster do
   # The module used by cache adapters for
   # distributed caching functionality.
   @moduledoc false
