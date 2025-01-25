@@ -271,9 +271,9 @@ defmodule Nebulex.MultilevelTest do
       test "get_all/2 and stream/2 [in: keys]", %{cache: cache, entries: expected} do
         keys = Enum.to_list(1..100)
 
-        assert cache.get_all!(in: keys) |> Enum.sort() == expected
+        assert cache.get_all!(in: keys) |> Enum.sort() == expected |> Enum.sort()
 
-        assert cache.stream!(in: keys) |> Enum.sort() == expected
+        assert cache.stream!(in: keys) |> Enum.sort() == expected |> Enum.sort()
       end
 
       test "delete_all/2", %{cache: cache} do

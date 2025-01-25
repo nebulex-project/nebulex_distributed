@@ -69,9 +69,9 @@ See the [online documentation][online_docs] for more information.
 
 ## Testing
 
-Since `Nebulex.Adapters.Local` uses the support modules and shared tests
-from `Nebulex` and by default its test folder is not included in the Hex
-dependency, the following steps are required for running the tests.
+Since this adapter uses support modules and shared tests from `Nebulex`,
+but the test folder is not included in the Hex dependency, the following
+steps are required to run the tests.
 
 First of all, make sure you set the environment variable `NEBULEX_PATH`
 to `nebulex`:
