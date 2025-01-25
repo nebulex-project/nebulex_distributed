@@ -527,7 +527,7 @@ defmodule Nebulex.Adapters.Multilevel do
       end
     end
 
-    {:ok, stream}
+    {:ok, Stream.flat_map(stream, & &1)}
   end
 
   ## Nebulex.Adapter.Transaction

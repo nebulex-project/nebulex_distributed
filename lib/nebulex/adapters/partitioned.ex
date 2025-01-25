@@ -665,7 +665,7 @@ defmodule Nebulex.Adapters.Partitioned do
 
       case do_execute(adapter_meta, %{query | op: :get_all}, opts) do
         {:ok, results} ->
-          {:halt, [results]}
+          {:halt, results}
 
         {:error, _} when on_error == :nothing ->
           {:halt, []}

@@ -13,7 +13,7 @@ defmodule Nebulex.MultilevelQueryableTest do
 
         expected = set1 ++ set2
 
-        assert cache.get_all!() |> :lists.usort() == List.zip([expected, expected])
+        assert cache.get_all!() |> :lists.usort() == Enum.zip([expected, expected])
         assert cache.get_all!(select: :key) |> :lists.usort() == expected
         assert cache.get_all!(select: :value) |> :lists.usort() == expected
 
@@ -21,7 +21,7 @@ defmodule Nebulex.MultilevelQueryableTest do
         :ok = Enum.each(set3, &cache.delete!(&1))
         expected = :lists.usort(expected -- set3)
 
-        assert cache.get_all!() |> :lists.usort() == List.zip([expected, expected])
+        assert cache.get_all!() |> :lists.usort() == Enum.zip([expected, expected])
         assert cache.get_all!(select: :key) |> :lists.usort() == expected
         assert cache.get_all!(select: :value) |> :lists.usort() == expected
       end
