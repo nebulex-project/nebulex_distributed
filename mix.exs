@@ -64,6 +64,8 @@ defmodule NebulexDistributed.MixProject do
       {:stream_data, "~> 1.1", only: [:dev, :test]},
       {:mimic, "~> 1.7", only: :test},
       {:ex2ms, "~> 1.6", only: :test},
+      {:nebulex_adapters_cachex,
+       github: "cabol/nebulex_adapters_cachex", branch: "v3.0.0-dev", only: :test},
 
       # Benchmark Test
       {:benchee, "~> 1.3", only: [:dev, :test]},

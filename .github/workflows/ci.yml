@@ -97,13 +97,13 @@ jobs:
       - name: Run tests
         run: |
           epmd -daemon
-          mix test --trace
+          mix test --exclude cachex_test
         if: ${{ !matrix.coverage }}
 
       - name: Run tests with coverage
         run: |
           epmd -daemon
-          mix coveralls.github
+          mix coveralls.github --exclude cachex_test
         if: ${{ matrix.coverage }}
 
       - name: Restore PLT Cache
